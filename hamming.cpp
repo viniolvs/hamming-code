@@ -8,7 +8,7 @@
 
 using namespace std;
 
-// verify of is pow of 2
+// verifica se é potência de 2
 bool isPowOf2(int n) { return (n & (n - 1)) == 0; }
 
 class hamming

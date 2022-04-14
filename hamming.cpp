@@ -227,13 +227,6 @@ void read(string filename)
     cout << "leitura do arquivo terminada! "<<endl << "Arquivo corrigido gerado!" << endl;
 }
 
-void foo()
-{
-    hamming h1,h2;
-    bitset<13> b = 0b0000000000001;
-    bitset<13> c = 0b0000000000000;
-}
-
 int main(int argc, char const *argv[])
 {
     if(!strcmp(argv[2],"-r"))
@@ -244,6 +237,7 @@ int main(int argc, char const *argv[])
     {
         write(argv[1]);
     }
-    //foo();
+    else
+        cout << "Entrada inválida!\n";
     return 0;
 }

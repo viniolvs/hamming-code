@@ -104,7 +104,6 @@ pair<bool, hamming> testC(bitset<13> set)
 
     //calcula a palavra sindrome
     bitset<4> syndrome = test.getC() ^ hw.getC();
-    cout << "Palavra sindrome = " << syndrome << endl;
 
     //dados M corretos
     if(syndrome.to_ulong() == 0)
@@ -120,8 +119,6 @@ pair<bool, hamming> testC(bitset<13> set)
     set.flip(syndrome.to_ulong());
     hamming fixedSet;
     fixedSet.decodeHamming(set);
-
-    
 
     return {false, fixedSet};
 }
@@ -217,7 +214,7 @@ void read(string filename)
 
         HW.whamFrom2Bytes(buffer);
         
-        cout << "Original: " << HW.getWham() << endl;
+        cout << "Hamming Original: " << HW.getWham() << endl;
 
         pair<bool, bitset<8>> correctionResult = correction(HW.getWham());
         if (correctionResult.first == true) {
@@ -231,7 +228,7 @@ void read(string filename)
         hamming correcao;
         correcao.encodeHamming(fixedWord);
 
-        cout << "Correcao: " << correcao.getWham() << endl;
+        cout << "Hamming corrigido: " << correcao.getWham() << endl;
     }
     outFile.close();
     inFile.close();

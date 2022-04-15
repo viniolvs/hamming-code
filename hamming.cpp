@@ -5,11 +5,55 @@
 #include <utility>
 #include <string.h>
 
-
 using namespace std;
 
+/*
+
+EXEMPLO
+./hamming teste.txt -w
+(gera um arquivo binario do codigo de hamming teste.txt.wham)
+(alterar valores de teste.txt.wham no editor hexadecimal)
+
+./hamming teste.txt.wham -r
+(gera um arquivo binario fix_teste.txt.wham que é a correção de teste.txt.wham)
+(tambem gera um arquivo fix_teste.txt, que deve ter o mesmo conteudo de teste.txt, caso a correção tenha funcionado)
+
+*/
+
+
+//arquivo -w sem .wham
+//recebe o arquivo sem .wham e devolve com .wham
+string outName(string filename)
+{
+    string outFilename;
+    outFilename.append(filename);
+    outFilename.append(".wham");
+    return outFilename;
+}
+
+//arquivo -r com .wham
+//recebe o arquivo com .wham e devolve string sem .wham
+string inName(string filename)
+{
+    string inFilename;
+    inFilename.append(filename);
+    cout << inFilename << endl;
+    for (int i = filename.length()-1;  ; i--)
+    {
+        inFilename.pop_back();
+        if(filename.at(i) == '.')
+            break;
+    }
+    
+    return inFilename;
+}
+//arquivo -r com .wham
+
 // verifica se é potência de 2
-bool isPowOf2(int n) { return (n & (n - 1)) == 0; }
+bool isPowOf2(int v) 
+{ 
+    return v && !(v & (v - 1));
+}
 
 class hamming
 {
@@ -17,9 +61,7 @@ private:
     bitset<8> M;
     bitset<4> C; 
     bitset<1> G;
-    bitset<13> wham;
-    int cI ;
-    int mI ;
+    bitset<13> ham;
 
 public:
     hamming(){};
@@ -32,48 +74,57 @@ public:
         C.set(2, (byte[7] ^ byte[3] ^ byte[2] ^ byte[1]));
         C.set(3, (byte[7] ^ byte[6] ^ byte[5] ^ byte[4]));
 
-        G = (byte[7] ^ byte[6] ^ byte[5] ^ byte[4] ^ C[3] ^ byte[3] ^ byte[2] ^ byte[1] ^ C[2] ^ byte[0] ^ C[1] ^ C[0]);
-
+        newG();
+        int cI ;
+        int mI ;
         cI = mI = 0;
-        wham[0] = G[0];
+        ham[0] = G[0];
         for (int i = 1; i < 13; i++)
         {
             if (isPowOf2(i))
-                wham[i] = C[cI++];
+                ham[i] = C[cI++];
             else
-                wham[i] = M[mI++];
+                ham[i] = M[mI++];
         }
 
     };
     //constroi m, c e g a partir de uma palavra de 13 bits
-    void decodeHamming(bitset<13> wham)
+    void decodeHamming(bitset<13> ham)
     {
-        this->wham = wham;
-        G[0] = wham[0];
+        this->ham = ham;
+        G[0] = ham[0];
+        int cI ;
+        int mI ;
         cI = mI = 0;
         for (int i = 1; i < 13; i++)
         {
             if (isPowOf2(i))
-                C[cI++]=wham[i];
+                C[cI++]=ham[i];
             else
-                M[mI++]=wham[i];
+                M[mI++]=ham[i];
         }
     }
+    //calcula G
+    void newG()
+    {
+        G[0] = (M[7] ^ M[6] ^ M[5] ^ M[4] ^ C[3] ^ M[3] ^ M[2] ^ M[1] ^ C[2] ^ M[0] ^ C[1] ^ C[0]);
+        ham[0]=G[0];
+    }
 
-    bitset<13> whamFrom2Bytes(char *bytes)
+    bitset<13> hamFrom2Bytes(char *bytes)
     {
         bitset<8> byte1(bytes[0]);
         bitset<8> byte2(bytes[1]);
-        bitset<13> wham;
+        bitset<13> ham;
 
         for (int i = 0; i < 8; i++)
-            wham.set(i,byte1[i]);
+            ham.set(i,byte1[i]);
         int j = 0;
         for (int i = 8 ; i < 13; i++,j++)
-            wham.set(i,byte2[j]);
-        decodeHamming(wham);
-        this->wham = wham;
-        return wham;
+            ham.set(i,byte2[j]);
+        decodeHamming(ham);
+        this->ham = ham;
+        return ham;
     }
 
     bitset<8> getM()
@@ -88,153 +139,223 @@ public:
     {
         return G;
     }
-    bitset<13> getWham()
+    bitset<13> getHam()
     {
-        return wham;
+        return ham;
+    }
+
+    void print()
+    {
+        cout << "M = " << getM() << endl;
+        cout << "C = " << getC() << endl;
+        cout << "G = " << getG() << endl;
+        cout << "Hamming = " << getHam() << endl;
     }
 };
 
-//se bool == false, palavra correta
-pair<bool, hamming> testC(bitset<13> set)
+//se bool == false, palavra correta, retorna a palavra sindrome
+pair<bool, bitset<4>> testC(bitset<13> set)
 {
+    //hw vem do arquivo
     hamming hw;
     hw.decodeHamming(set);
+    //gera hamming novamente a partir do M de hw
     hamming test;
     test.encodeHamming(hw.getM());
 
     //calcula a palavra sindrome
-    bitset<4> syndrome = test.getC() ^ hw.getC();
+    bitset<4> syndrome;
+    syndrome.set(0, (test.getC()[0] ^ hw.getC()[0]));
+    syndrome.set(1, (test.getC()[1] ^ hw.getC()[1]));
+    syndrome.set(2, (test.getC()[2] ^ hw.getC()[2]));
+    syndrome.set(3, (test.getC()[3] ^ hw.getC()[3]));
 
     //dados M corretos
     if(syndrome.to_ulong() == 0)
-        return {false, hw};
-    //impossivel corrigir
-    if (syndrome.to_ulong() > 12)
     {
-        cout << "valor da palavra sindrome maior do que 12, impossível corrigir!" << endl;
-        return {false, test};
+        cout << "Palavra sindrome == 0!" << endl;
+        return {false, syndrome};
     }
-    //corige e retorna a palavra corrigida
-    //flipa o bit na posiçao da palavra sindrome
-    set.flip(syndrome.to_ulong());
-    hamming fixedSet;
-    fixedSet.decodeHamming(set);
-
-    return {false, fixedSet};
+    //impossivel corrigir
+    else if (syndrome.to_ulong() > 12)
+    {
+        throw "Valor da palavra sindrome maior do que 12, impossível corrigir!";
+        exit(1);
+    }
+    //palavra sindrome diferente de 0 e < 12, necessário corrigir!
+    return {false, syndrome};
 }
 
 //retorna true se correto
-bool testG(bitset<13> set)
+bool testG(bitset<1> a, bitset<1> b)
 {
-    hamming hw;
-    hw.decodeHamming(set);
-    hamming test;
-    test.encodeHamming(hw.getM());
-    bitset<1> g = hw.getG() ^ test.getG();
+    bitset<1> g = a ^ b;
     return (g.to_ulong() == 0);
 }
 
-// se bool == false, palavra correta
-pair<bool, bitset<8>> correction(bitset<13> set)
-{
-    bitset<8> aux;
-    pair<bool, hamming> fixing = testC(set);
-
-    //erro test c
-    if (fixing.first == true)
-        return {true,aux};
-    
-    hamming hw;
-    hw.encodeHamming(fixing.second.getM());
-
-    //erro no teste G
-    if(testG(hw.getWham()) == false)
-    {
-        cout << "G incompatível!" << endl;
-        return {true, aux};
-    }
-
-    return {false, hw.getM()};
-}
 
 //-w
-void write(string outFilename) {
+//Grava o arquivo hamming
+void write(string inFilename) 
+{
     ifstream inFile;
     ofstream outFile;
-    char buffer;
-    bitset<8> b;
-    hamming hw;
 
     cout << "Começando a gravar..." << endl;
 
-    inFile.open("teste.txt", ios::binary | ios::in);
+    string outFilename = outName(inFilename);
+
+    inFile.open(inFilename, ios::binary | ios::in);
     outFile.open(outFilename, ios::binary | ios::out);
 
     if (!inFile.is_open() || !outFile.is_open())
         throw "Error opening file";
 
+    char byte;
+    bitset<8> b;
+    hamming hw;
+    int count=0;
     while (!inFile.eof()) {
-        inFile.read(&buffer, 1);
+        inFile.read(&byte, 1);
         if (inFile.eof())
             break;
 
-        b = buffer;
-
+        b = byte;
         hw.encodeHamming(b);
-        bitset<13> wham = hw.getWham();
-        outFile.write((char*)&wham, 2);
+
+        cout << "\nByte " << count++ << ": " << endl;
+        hw.print();
+
+        bitset<13> ham = hw.getHam();
+        outFile.write((char*)&ham, 2);
     }
 
     inFile.close();
     outFile.close();
 
-    cout << "gravacao completa!" << endl;
+    cout << "Gravacao completa!" << endl;
 }
 
-//-r
-void read(string filename)
+//le um arquivo wham e gera um txt
+void writeTXT(string filename)
 {
-    ifstream inFile;
-    ofstream outFile;
+    ifstream whamFile;
+    ofstream tocorrectFile;
     char buffer[2];
     hamming HW;
+    
+    string outFilename = inName(filename);
 
-    cout << "Começando leitura..." << endl;
+    whamFile.open(filename, ios::binary | ios::in);
+    tocorrectFile.open(outFilename, ios::binary | ios::out);
 
-    inFile.open(filename, ios::binary | ios::in);
-    outFile.open("teste.txt", ios::binary | ios::out);
-
-    if (!inFile.is_open() || !outFile.is_open())
+    if (!whamFile.is_open() || !tocorrectFile.is_open())
         throw "Error opening file";
 
-    while (!inFile.eof()) {
-        inFile.read((char *)&buffer, 2);
-        if (inFile.eof())
+    while (!whamFile.eof()) 
+    {
+        //lê dois bytes do .wham
+        whamFile.read((char *)&buffer, 2);
+        if (whamFile.eof())
+            break;
+        //gera hamming a partir de dois bytes do arquivo
+        HW.hamFrom2Bytes(buffer);
+        //hamming do arquivo
+        bitset<8> fixedWord = HW.getM();
+        tocorrectFile.write((char *)&fixedWord, sizeof(char));
+    }
+    tocorrectFile.close();
+    whamFile.close();
+
+    cout << "Leitura do arquivo terminada! Arquivo txt corrigido gerado!" << endl;
+}
+
+
+//-r
+//le o arquivo .wham e corrige caso adulterado
+//salva o arquivo com a correção com o sufixo fix_
+void read(string filename)
+{
+    ifstream whamFile;
+    ofstream newWhamFile;
+    char buffer[2];
+    hamming HW;
+    hamming fix;
+
+
+    cout << "Começando leitura..." << endl;
+    string outFilename;
+    outFilename.append("fix_");
+    outFilename.append(filename);
+
+    whamFile.open(filename, ios::binary | ios::in);
+    newWhamFile.open(outFilename, ios::binary | ios::out);
+
+    if (!whamFile.is_open() || !newWhamFile.is_open())
+        throw "Error opening file";
+
+    while (!whamFile.eof()) 
+    {
+        //lê dois bytes do .wham
+        whamFile.read((char *)&buffer, 2);
+        if (whamFile.eof())
             break;
 
-        HW.whamFrom2Bytes(buffer);
-        
-        cout << "Hamming Original: " << HW.getWham() << endl;
+        //gera hamming a partir de dois bytes do arquivo
+        HW.hamFrom2Bytes(buffer);
 
-        pair<bool, bitset<8>> correctionResult = correction(HW.getWham());
-        if (correctionResult.first == true) {
-            cout << "Impossível corrigir!" << endl;
-            continue;
+        //hamming do arquivo
+        cout << "Palavra do arquivo = " << HW.getM() << endl;
+        cout << "Hamming palavra do arquivo = " << HW.getHam() << endl;
+
+        //faz o testeC
+        pair<bool, bitset<4>> syndrome = testC(HW.getHam());
+
+        cout << "Palavra sindrome = " << syndrome.second << endl;
+
+        if (syndrome.first == true)
+        {
+            throw "Arquivo corrompido!";
+            exit(1);
         }
+        else if (syndrome.second.to_ulong() == 0)
+        {
+            cout << "M está correto!" << endl;
+            fix.decodeHamming(HW.getHam());
+        }
+        else
+        {
+            //flipa o bit na posição da pavra sindrome
+            bitset<13> fromfile = HW.getHam();
+            fromfile.flip(syndrome.second.to_ulong());
+            //recupera M, C e G depois da correção
+            fix.decodeHamming(fromfile);
+            fix.newG();
+            //faz o teste G
+            if (testG(fix.getG(),HW.getG())==false)
+            {
+                throw "Teste G rejeitado!";
+                exit(1);
+            }
+            else
+            {
+                cout << "Palavra M corrigida! Gravando palavra corrigida no arquivo...\n";
+                cout << "Hamming palavra corrigida = " << fix.getHam() << endl;
+                cout << "Palavra corrigida = " << fix.getM() << endl;
+            }
+        }
+        bitset<13> fixedHam = fix.getHam();
+        newWhamFile.write((char*)&fixedHam, 2);
 
-        bitset<8> fixedWord = correctionResult.second;
-        outFile.write((char *)&fixedWord, sizeof(char));
-
-        hamming correcao;
-        correcao.encodeHamming(fixedWord);
-
-        cout << "Hamming corrigido: " << correcao.getWham() << endl;
+        cout << "==========================================\n"; 
     }
-    outFile.close();
-    inFile.close();
+    newWhamFile.close();
+    whamFile.close();
 
-    cout << "leitura do arquivo terminada! "<<endl << "Arquivo corrigido gerado!" << endl;
+    writeTXT(outFilename);
+    cout << "Leitura do arquivo terminada! Arquivo corrigido " << outFilename << " gerado!" << endl;
 }
+
 
 int main(int argc, char const *argv[])
 {
@@ -248,5 +369,6 @@ int main(int argc, char const *argv[])
     }
     else
         cout << "Entrada inválida!\n";
+
     return 0;
 }

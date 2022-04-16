@@ -8,13 +8,11 @@
 using namespace std;
 
 /*
-
 EXEMPLO
 ./hamming teste.txt -w
 
 ./hamming teste.txt.wham -r
 */
-
 
 //arquivo -w sem .wham
 //recebe o arquivo sem .wham e devolve com .wham

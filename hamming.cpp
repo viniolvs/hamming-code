@@ -11,13 +11,8 @@ using namespace std;
 
 EXEMPLO
 ./hamming teste.txt -w
-(gera um arquivo binario do codigo de hamming teste.txt.wham)
-(alterar valores de teste.txt.wham no editor hexadecimal)
 
 ./hamming teste.txt.wham -r
-(gera um arquivo binario fix_teste.txt.wham que é a correção de teste.txt.wham)
-(tambem gera um arquivo fix_teste.txt, que deve ter o mesmo conteudo de teste.txt, caso a correção tenha funcionado)
-
 */
 
 
@@ -179,7 +174,7 @@ pair<bool, bitset<4>> testC(bitset<13> set)
     //impossivel corrigir
     else if (syndrome.to_ulong() > 12)
     {
-        throw "Valor da palavra sindrome maior do que 12, impossível corrigir!";
+        cout << "Valor da palavra sindrome maior do que 12, impossível corrigir!\n";
         exit(1);
     }
     //palavra sindrome diferente de 0 e < 12, necessário corrigir!
@@ -273,32 +268,38 @@ void writeTXT(string filename)
 
 //-r
 //le o arquivo .wham e corrige caso adulterado
-//salva o arquivo com a correção com o sufixo fix_
+
 void read(string filename)
 {
-    ifstream whamFile;
-    ofstream newWhamFile;
+    ifstream inFile;
+    ofstream outFile;
     char buffer[2];
     hamming HW;
     hamming fix;
-
+    
 
     cout << "Começando leitura..." << endl;
-    string outFilename;
-    outFilename.append("fix_");
-    outFilename.append(filename);
 
-    whamFile.open(filename, ios::binary | ios::in);
-    newWhamFile.open(outFilename, ios::binary | ios::out);
+    //define o tamanho do arquivo
+    inFile.open(filename, ios::binary | ios::in);
+    const auto begin = inFile.tellg();
+    inFile.seekg(0,ios::end);
+    const auto end = inFile.tellg();
+    int filesize = (end-begin);
+    inFile.close();
+    inFile.open(filename, ios::binary | ios::in);
+    
+    bitset<13> bigBuffer[filesize];
 
-    if (!whamFile.is_open() || !newWhamFile.is_open())
+    if (!inFile.is_open())
         throw "Error opening file";
 
-    while (!whamFile.eof()) 
+    int i=0;
+    while (inFile.good()) 
     {
         //lê dois bytes do .wham
-        whamFile.read((char *)&buffer, 2);
-        if (whamFile.eof())
+        inFile.read((char *)&buffer, 2);
+        if (inFile.eof())
             break;
 
         //gera hamming a partir de dois bytes do arquivo
@@ -334,7 +335,8 @@ void read(string filename)
             //faz o teste G
             if (testG(fix.getG(),HW.getG())==false)
             {
-                throw "Teste G rejeitado!";
+                cout << "Teste G rejeitado! Impossível corrigir!\n";
+                inFile.close();
                 exit(1);
             }
             else
@@ -345,15 +347,21 @@ void read(string filename)
             }
         }
         bitset<13> fixedHam = fix.getHam();
-        newWhamFile.write((char*)&fixedHam, 2);
+        bigBuffer[i++] = fixedHam;
 
         cout << "==========================================\n"; 
     }
-    newWhamFile.close();
-    whamFile.close();
+    inFile.close();
 
-    writeTXT(outFilename);
-    cout << "Leitura do arquivo terminada! Arquivo corrigido " << outFilename << " gerado!" << endl;
+    outFile.open(filename, ios::binary | ios::out);
+    int j = 0;
+    while(i--)
+        outFile.write((char*)&bigBuffer[j++], 2);
+
+    outFile.close();
+
+    writeTXT(filename);
+    cout << "Leitura do arquivo terminada! Arquivo corrigido " << filename << " gerado!" << endl;
 }
 
 

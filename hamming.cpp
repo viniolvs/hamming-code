@@ -315,6 +315,7 @@ void read(string filename)
         if (syndrome.first == true)
         {
             cout << "Arquivo corrompido!\n";
+            inFile.close();
             exit(1);
         }
         else if (syndrome.second.to_ulong() == 0)

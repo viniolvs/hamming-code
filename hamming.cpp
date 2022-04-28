@@ -313,11 +313,7 @@ void read(string filename)
         cout << "Palavra sindrome = " << syndrome.second << endl;
 
         if (syndrome.first == true)
-        {
             cout << "Arquivo corrompido!\n";
-            inFile.close();
-            exit(1);
-        }
         else if (syndrome.second.to_ulong() == 0)
         {
             cout << "M está correto!" << endl;
@@ -333,11 +329,8 @@ void read(string filename)
             fix.newG();
             //faz o teste G
             if (testG(fix.getG(),HW.getG())==false)
-            {
                 cout << "Teste G rejeitado! Impossível corrigir!\n";
-                inFile.close();
-                exit(1);
-            }
+            
             else
             {
                 cout << "Palavra M corrigida! Gravando palavra corrigida no arquivo...\n";
